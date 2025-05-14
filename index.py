@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 # Step 1: Load the data
 # Download the dataset from Kaggle Daily Temperature Of Major Cities. And put in the dataset directory.
 # https://www.kaggle.com/datasets/sudalairajkumar/daily-temperature-of-major-cities
-data = pd.read_csv('dataset/city_temperature.csv', low_memory=False)
+data = pd.read_csv('city_temperature.csv', low_memory=False)
 
 # Step 2: Filter the data for the country 'India
 india_data = data[(data['Country'] == 'India') & (data['AvgTemperature'] > -99)].copy()
