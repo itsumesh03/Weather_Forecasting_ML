@@ -1,69 +1,71 @@
 # Problem: Forecasting weather with Simple Linear Regression on time series data
 
-import pandas as pd
-from sklearn.model_selection import train_test_split
-from sklearn.linear_model import LinearRegression
-from sklearn.metrics import mean_squared_error
-import matplotlib.pyplot as plt
-
-
-# Step 1: Load the data
 # Download the dataset from Kaggle Daily Temperature Of Major Cities. And put in the dataset directory.
 # https://www.kaggle.com/datasets/sudalairajkumar/daily-temperature-of-major-cities
+
+import pandas as pd
+import numpy as np
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import PolynomialFeatures, StandardScaler
+from sklearn.linear_model import LinearRegression
+from sklearn.metrics import mean_squared_error, r2_score
+import matplotlib.pyplot as plt
+
+# Step 1: Load data
 data = pd.read_csv('city_temperature.csv', low_memory=False)
 
-# Step 2: Filter the data for the country 'India
+# Step 2: Filter for India and remove invalid temperatures
 india_data = data[(data['Country'] == 'India') & (data['AvgTemperature'] > -99)].copy()
 
-# Step 3: Combine the Month, Day and Year into a single Date column using .loc
-india_data.loc[:, 'Date'] = pd.to_datetime(india_data[['Year', 'Month', 'Day']])
+# Step 3: Create Date column
+india_data['Date'] = pd.to_datetime(india_data[['Year', 'Month', 'Day']])
 
-# Step 4: Select the relevant columns (Datetime, AvgTem)
-rel_india_data = india_data[['Date', 'AvgTemperature']]
+# Step 4: Select necessary columns
+rel_data = india_data[['Date', 'AvgTemperature']].dropna()
 
-# Step 5: Preprocess the data.
-# Models like Linear Regression cannot work with missing data, so we need to handle them.
-# Weather data is measured daily and missing values might be a very few, So removing the missing values rows will be good here.
-rel_india_data = rel_india_data.dropna()
+# Step 5: Feature Engineering
+rel_data['Date_ordinal'] = rel_data['Date'].map(pd.Timestamp.toordinal)
 
-# Date_ordinal column will contain integer values, which represent the date as a number, making it usable for the Linear Regression model.
-# pd.Timestamp('1995-01-01').toordinal() might return 729216.
-rel_india_data['Date_ordinal'] = rel_india_data['Date'].map(pd.Timestamp.toordinal)
+# Add a 7-day moving average feature to capture local trends
+rel_data['MA_7'] = rel_data['AvgTemperature'].rolling(window=7).mean()
+rel_data = rel_data.dropna()  # Drop rows with NaN from rolling average
 
-X = rel_india_data[['Date_ordinal']] # Feature
-y = rel_india_data['AvgTemperature'] # Target
+# Define features and target
+X = rel_data[['Date_ordinal', 'MA_7']]
+y = rel_data['AvgTemperature']
 
 # Step 6: Split the data
-# Split into 80-20 ratio, training (80%) and validation (20%) datasets.
 X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, random_state=42)
 
+# Step 7: Polynomial Features
+poly = PolynomialFeatures(degree=3, include_bias=False)
+X_train_poly = poly.fit_transform(X_train)
+X_val_poly = poly.transform(X_val)
 
-# Step 7: Build and Train the model.
+# Step 8: Scale Features
+scaler = StandardScaler()
+X_train_scaled = scaler.fit_transform(X_train_poly)
+X_val_scaled = scaler.transform(X_val_poly)
+
+# Step 9: Train Model
 model = LinearRegression()
-model.fit(X_train, y_train)
+model.fit(X_train_scaled, y_train)
 
-# Step 8: Make predictions and Evaluate
-predictions = model.predict(X_val)
-mean_squared_error = mean_squared_error(y_val, predictions)
-print(mean_squared_error)
+# Step 10: Evaluate Model
+predictions = model.predict(X_val_scaled)
+mse = mean_squared_error(y_val, predictions)
+r2 = r2_score(y_val, predictions)
 
-# Step 9: Visualization
-plt.figure(figsize=(7, 5))
-plt.scatter(X_val, y_val, color='blue', label='Actual Temperature')
-plt.plot(X_val, predictions, color='red', linewidth=2, label='Predicted Temperature')
+print(f"Mean Squared Error: {mse:.2f}")
+print(f"R² Score: {r2:.4f}")
+
+# Step 11: Plot Predictions
+plt.figure(figsize=(10, 6))
+plt.scatter(X_val['Date_ordinal'], y_val, label='Actual', alpha=0.6)
+plt.scatter(X_val['Date_ordinal'], predictions, label='Predicted', color='red', alpha=0.6)
+plt.title('Improved Weather Forecast: Actual vs Predicted Temperatures (Polynomial Regression)')
 plt.xlabel('Date (Ordinal)')
-plt.ylabel('Temperature')
-plt.title('Weather Forecast for India: Actual vs Predicted')
+plt.ylabel('Avg Temperature')
 plt.legend()
+plt.tight_layout()
 plt.show()
-
-# The accuracy is coming as 74%
-# The model performs poorly.
-# What Can We Do?
-
-# Introduce Complexity: If you want to capture more accurate weather forecasts, we might need a more sophisticated model,
-# such as Polynomial Regression (to capture nonlinear trends) or Time Series Models (like ARIMA or Prophet)
-# that can account for seasonal patterns.
-
-# Add Features: Simple Linear Regression is based only on the date. Adding more features (e.g., previous day’s temperature,
-# humidity, pressure, etc.) can improve predictions.
