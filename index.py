@@ -1,3 +1,10 @@
+
+
+# Download the dataset from Kaggle Daily Temperature Of Major Cities. And put in the dataset directory.
+# https://www.kaggle.com/datasets/sudalairajkumar/daily-temperature-of-major-cities
+
+
+
 import pandas as pd
 import numpy as np
 from sklearn.model_selection import train_test_split
