@@ -1,8 +1,3 @@
-# Problem: Forecasting weather with Simple Linear Regression on time series data
-
-# Download the dataset from Kaggle Daily Temperature Of Major Cities. And put in the dataset directory.
-# https://www.kaggle.com/datasets/sudalairajkumar/daily-temperature-of-major-cities
-
 import pandas as pd
 import numpy as np
 from sklearn.model_selection import train_test_split
@@ -10,6 +5,7 @@ from sklearn.preprocessing import PolynomialFeatures, StandardScaler
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_squared_error, r2_score
 import matplotlib.pyplot as plt
+from datetime import datetime, timedelta
 
 # Step 1: Load data
 data = pd.read_csv('city_temperature.csv', low_memory=False)
@@ -69,3 +65,36 @@ plt.ylabel('Avg Temperature')
 plt.legend()
 plt.tight_layout()
 plt.show()
+
+# Step 12: Predict Temperature for a Single Future Date
+future_date_str = input("\nEnter a future date (YYYY-MM-DD): ")
+
+try:
+    future_date = pd.to_datetime(future_date_str)
+    future_ordinal = future_date.toordinal()
+    last_ma7 = rel_data['MA_7'].iloc[-1]
+
+    future_features = np.array([[future_ordinal, last_ma7]])
+    future_poly = poly.transform(future_features)
+    future_scaled = scaler.transform(future_poly)
+
+    future_temp = model.predict(future_scaled)[0]
+    print(f"\nPredicted Avg Temperature for {future_date_str}: {future_temp:.2f} °F")
+except Exception as e:
+    print("Invalid date format or prediction failed:", e)
+
+# Step 13: Predict Temperature for a Range of Future Dates (e.g., next 7 days)
+print("\nPredicting temperature for the next 7 days:")
+start_date = rel_data['Date'].max() + timedelta(days=1)
+last_ma7 = rel_data['MA_7'].iloc[-1]
+
+for i in range(7):
+    day = start_date + timedelta(days=i)
+    day_ordinal = day.toordinal()
+
+    features = np.array([[day_ordinal, last_ma7]])
+    features_poly = poly.transform(features)
+    features_scaled = scaler.transform(features_poly)
+
+    temp_prediction = model.predict(features_scaled)[0]
+    print(f"{day.date()}: {temp_prediction:.2f} °F")
